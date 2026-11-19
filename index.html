@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор расходов - Дома без передачи в аренду</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .result-box { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="p-6 max-w-5xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">🏡 Калькулятор расходов - Дома без передачи в аренду</h1>
+        <p class="text-sm text-gray-600 mb-4">Расчет коммунальных и эксплуатационных расходов (КЭР) для собственника дома</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Выберите улицу</label>
+                <select id="streetSelect" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">-- Выберите улицу --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Выберите номер дома</label>
+                <select id="houseSelect" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">-- Сначала выберите улицу --</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Площадь дома (кв.м)</label>
+                <input type="number" id="houseArea" step="0.01" class="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50" readonly>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Площадь земельного участка (кв.м)</label>
+                <input type="number" id="landArea" step="0.01" class="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-50" readonly>
+            </div>
+        </div>
+
+        <button onclick="calculate()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+            Рассчитать расходы
+        </button>
+    </div>
+
+    <div id="results" class="hidden space-y-6">
+        <!-- Постоянные расходы -->
+        <div class="bg-white rounded-xl shadow-lg p-6 result-box border-l-4 border-blue-500">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🏢 Постоянные расходы (Fixed Costs)</h2>
+            <p class="text-sm text-gray-600 mb-4">Расходы по общедолевому имуществу (инфраструктура, придомовая территория, ландшафт, техническая эксплуатация)</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3">Показатель</th>
+                            <th class="px-4 py-3 text-right">Тариф</th>
+                            <th class="px-4 py-3 text-right">В месяц</th>
+                            <th class="px-4 py-3 text-right">В год</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b">
+                            <td class="px-4 py-3 font-medium">Содержание дома</td>
+                            <td class="px-4 py-3 text-right">405.81 ₽/кв.м/мес</td>
+                            <td class="px-4 py-3 text-right" id="houseFixedMonth">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="houseFixedYear">0 ₽</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="px-4 py-3 font-medium">Содержание земельного участка</td>
+                            <td class="px-4 py-3 text-right">17.62 ₽/кв.м/мес</td>
+                            <td class="px-4 py-3 text-right" id="landFixedMonth">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="landFixedYear">0 ₽</td>
+                        </tr>
+                        <tr class="bg-blue-50 font-bold text-blue-900">
+                            <td class="px-4 py-3" colspan="2">ИТОГО Постоянные расходы</td>
+                            <td class="px-4 py-3 text-right" id="fixedTotalMonth">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="fixedTotalYear">0 ₽</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Переменные расходы -->
+        <div class="bg-white rounded-xl shadow-lg p-6 result-box border-l-4 border-green-500">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">💧 Переменные расходы (Variable Costs)</h2>
+            <p class="text-sm text-gray-600 mb-4">Расходы по счетчикам (вода, электроэнергия, отопление) - рассчитываются от площади дома</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-600">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-3">Ресурс</th>
+                            <th class="px-4 py-3 text-right">Норматив на 1 кв.м</th>
+                            <th class="px-4 py-3 text-right">Тариф</th>
+                            <th class="px-4 py-3 text-right">Лето (мес)</th>
+                            <th class="px-4 py-3 text-right">Зима (мес)</th>
+                            <th class="px-4 py-3 text-right">В год</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b">
+                            <td class="px-4 py-3">Холодная вода (ХВС)</td>
+                            <td class="px-4 py-3 text-right">0.38 м³/кв.м</td>
+                            <td class="px-4 py-3 text-right">24.5 ₽/м³</td>
+                            <td class="px-4 py-3 text-right" id="coldWaterSummer">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="coldWaterWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="coldWaterYear">0 ₽</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="px-4 py-3">Горячая вода (ГВС)</td>
+                            <td class="px-4 py-3 text-right">0.13 м³/кв.м</td>
+                            <td class="px-4 py-3 text-right">381.3 ₽/м³</td>
+                            <td class="px-4 py-3 text-right" id="hotWaterSummer">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="hotWaterWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="hotWaterYear">0 ₽</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="px-4 py-3">Водоотведение</td>
+                            <td class="px-4 py-3 text-right">0.65 м³/кв.м</td>
+                            <td class="px-4 py-3 text-right">24.5 ₽/м³</td>
+                            <td class="px-4 py-3 text-right" id="sewageSummer">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="sewageWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="sewageYear">0 ₽</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="px-4 py-3">Электроэнергия</td>
+                            <td class="px-4 py-3 text-right">5.33 кВт·ч/кв.м</td>
+                            <td class="px-4 py-3 text-right">7.8 ₽/кВт·ч</td>
+                            <td class="px-4 py-3 text-right" id="electroSummer">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="electroWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="electroYear">0 ₽</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="px-4 py-3">Отопление</td>
+                            <td class="px-4 py-3 text-right">0.01 Гкал/кв.м</td>
+                            <td class="px-4 py-3 text-right">5097 ₽/Гкал</td>
+                            <td class="px-4 py-3 text-right">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="heatingWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="heatingYear">0 ₽</td>
+                        </tr>
+                        <tr class="bg-green-50 font-bold text-green-900">
+                            <td class="px-4 py-3" colspan="3">ИТОГО Переменные расходы</td>
+                            <td class="px-4 py-3 text-right" id="varTotalSummer">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="varTotalWinter">0 ₽</td>
+                            <td class="px-4 py-3 text-right" id="varTotalYear">0 ₽</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Общий итог -->
+        <div class="bg-gray-800 text-white rounded-xl shadow-lg p-6 result-box">
+            <h2 class="text-xl font-bold mb-4">🎯 Общий итог расходов</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <div class="text-sm text-gray-300 mb-1">Расход в месяц (Лето)</div>
+                    <div class="text-2xl font-bold text-yellow-400" id="grandTotalSummer">0 ₽</div>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <div class="text-sm text-gray-300 mb-1">Расход в месяц (Зима)</div>
+                    <div class="text-2xl font-bold text-yellow-400" id="grandTotalWinter">0 ₽</div>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <div class="text-sm text-gray-300 mb-1">Расход в год</div>
+                    <div class="text-2xl font-bold text-green-400" id="grandTotalYear">0 ₽</div>
+                </div>
+            </div>
+            <div class="mt-4 p-3 bg-gray-700 rounded-lg">
+                <p class="text-xs text-gray-300">
+                    <strong>Примечание:</strong> Данные расчеты произведены по нормативам на 1 кв.м дома для прогнозирования расходов. 
+                    Фактическая оплата производится строго по показаниям индивидуальных приборов учета.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Данные домов по улицам
+        const houses = {
+            "Еловая": [
+                { num: 1, area: 134.2, land: 300 },
+                { num: 2, area: 134.2, land: 300 },
+                { num: 3, area: 134.2, land: 327 },
+                { num: 4, area: 134.2, land: 308 },
+                { num: 5, area: 134.2, land: 300 },
+                { num: 6, area: 217.7, land: 300 },
+                { num: 7, area: 217.7, land: 278 }
+            ],
+            "Миндальная": [
+                { num: 1, area: 241.3, land: 333 },
+                { num: 2, area: 241.3, land: 343 },
+                { num: 3, area: 241.3, land: 300 },
+                { num: 4, area: 241.3, land: 300 },
+                { num: 5, area: 241.3, land: 323 },
+                { num: 6, area: 241.3, land: 300 },
+                { num: 7, area: 241.3, land: 300 },
+                { num: 8, area: 241.3, land: 300 },
+                { num: 9, area: 241.3, land: 229 }
+            ],
+            "Грушевая": [
+                { num: 1, area: 212.3, land: 541 },
+                { num: 2, area: 212.3, land: 591 },
+                { num: 3, area: 211.4, land: 467 },
+                { num: 4, area: 211.4, land: 468 },
+                { num: 5, area: 212.7, land: 480 },
+                { num: 6, area: 212.7, land: 503 },
+                { num: 7, area: 212.7, land: 438 },
+                { num: 8, area: 212.7, land: 517 },
+                { num: 9, area: 212.3, land: 542 },
+                { num: 10, area: 212.0, land: 713 },
+                { num: 11, area: 212.0, land: 0 }
+            ],
+            "Вишневая": [
+                { num: 1, area: 117.0, land: 1028 },
+                { num: 2, area: 117.0, land: 624 },
+                { num: 3, area: 117.0, land: 490 }
+            ]
+        };
+
+        // Тарифы
+        const tariffs = {
+            houseFixedYearPerSqm: 4869.67,
+            houseFixedMonthPerSqm: 405.81,
+            landFixedYearPerSqm: 211.48,
+            landFixedMonthPerSqm: 17.62,
+            coldWaterNorm: 0.38,
+            coldWaterTariff: 24.5,
+            hotWaterNorm: 0.13,
+            hotWaterTariff: 381.3,
+            sewageNorm: 0.65,
+            sewageTariff: 24.5,
+            electroNorm: 5.33,
+            electroTariff: 7.8,
+            heatingNorm: 0.01,
+            heatingTariff: 5097
+        };
+
+        // Заполнение списка улиц
+        const streetSelect = document.getElementById('streetSelect');
+        Object.keys(houses).forEach(street => {
+            const option = document.createElement('option');
+            option.value = street;
+            option.textContent = street;
+            streetSelect.appendChild(option);
+        });
+
+        // При выборе улицы - заполняем номера домов
+        streetSelect.addEventListener('change', function() {
+            const street = this.value;
+            const houseSelect = document.getElementById('houseSelect');
+            houseSelect.innerHTML = '<option value="">-- Выберите номер дома --</option>';
+            
+            if (street && houses[street]) {
+                houses[street].forEach(house => {
+                    const option = document.createElement('option');
+                    option.value = house.num;
+                    option.textContent = `Дом № ${house.num} (${house.area} м², ЗУ: ${house.land} м²)`;
+                    houseSelect.appendChild(option);
+                });
+            }
+            
+            document.getElementById('houseArea').value = '';
+            document.getElementById('landArea').value = '';
+        });
+
+        // При выборе дома - заполняем площади
+        document.getElementById('houseSelect').addEventListener('change', function() {
+            const street = streetSelect.value;
+            const houseNum = parseInt(this.value);
+            
+            if (street && houseNum) {
+                const house = houses[street].find(h => h.num === houseNum);
+                if (house) {
+                    document.getElementById('houseArea').value = house.area;
+                    document.getElementById('landArea').value = house.land;
+                }
+            } else {
+                document.getElementById('houseArea').value = '';
+                document.getElementById('landArea').value = '';
+            }
+        });
+
+        function formatMoney(amount) {
+            return Math.round(amount).toLocaleString('ru-RU') + ' ₽';
+        }
+
+        function calculate() {
+            const street = streetSelect.value;
+            const houseNum = parseInt(document.getElementById('houseSelect').value);
+            
+            if (!street || !houseNum) {
+                alert("Пожалуйста, выберите улицу и номер дома");
+                return;
+            }
+
+            const house = houses[street].find(h => h.num === houseNum);
+            if (!house) {
+                alert("Дом не найден");
+                return;
+            }
+
+            const houseArea = house.area;
+            const landArea = house.land;
+
+            // 1. Постоянные расходы
+            const houseFixedMonth = tariffs.houseFixedMonthPerSqm * houseArea;
+            const houseFixedYear = tariffs.houseFixedYearPerSqm * houseArea;
+            
+            const landFixedMonth = tariffs.landFixedMonthPerSqm * landArea;
+            const landFixedYear = tariffs.landFixedYearPerSqm * landArea;
+            
+            const fixedTotalMonth = houseFixedMonth + landFixedMonth;
+            const fixedTotalYear = houseFixedYear + landFixedYear;
+
+            // 2. Переменные расходы (по нормативам на 1 кв.м дома)
+            const coldWaterMonth = tariffs.coldWaterNorm * houseArea * tariffs.coldWaterTariff;
+            const hotWaterMonth = tariffs.hotWaterNorm * houseArea * tariffs.hotWaterTariff;
+            const sewageMonth = tariffs.sewageNorm * houseArea * tariffs.sewageTariff;
+            const electroMonth = tariffs.electroNorm * houseArea * tariffs.electroTariff;
+            
+            const varSummerMonth = coldWaterMonth + hotWaterMonth + sewageMonth + electroMonth;
+            
+            const heatingMonth = tariffs.heatingNorm * houseArea * tariffs.heatingTariff;
+            const varWinterMonth = varSummerMonth + heatingMonth;
+
+            const varYear = (varSummerMonth * 5) + (varWinterMonth * 7);
+
+            // 3. Общий итог
+            const grandTotalSummer = fixedTotalMonth + varSummerMonth;
+            const grandTotalWinter = fixedTotalMonth + varWinterMonth;
+            const grandTotalYear = fixedTotalYear + varYear;
+
+            // Вывод результатов
+            document.getElementById('houseFixedMonth').textContent = formatMoney(houseFixedMonth);
+            document.getElementById('houseFixedYear').textContent = formatMoney(houseFixedYear);
+            document.getElementById('landFixedMonth').textContent = formatMoney(landFixedMonth);
+            document.getElementById('landFixedYear').textContent = formatMoney(landFixedYear);
+            document.getElementById('fixedTotalMonth').textContent = formatMoney(fixedTotalMonth);
+            document.getElementById('fixedTotalYear').textContent = formatMoney(fixedTotalYear);
+
+            document.getElementById('coldWaterSummer').textContent = formatMoney(coldWaterMonth);
+            document.getElementById('coldWaterWinter').textContent = formatMoney(coldWaterMonth);
+            document.getElementById('coldWaterYear').textContent = formatMoney(coldWaterMonth * 12);
+
+            document.getElementById('hotWaterSummer').textContent = formatMoney(hotWaterMonth);
+            document.getElementById('hotWaterWinter').textContent = formatMoney(hotWaterMonth);
+            document.getElementById('hotWaterYear').textContent = formatMoney(hotWaterMonth * 12);
+
+            document.getElementById('sewageSummer').textContent = formatMoney(sewageMonth);
+            document.getElementById('sewageWinter').textContent = formatMoney(sewageMonth);
+            document.getElementById('sewageYear').textContent = formatMoney(sewageMonth * 12);
+
+            document.getElementById('electroSummer').textContent = formatMoney(electroMonth);
+            document.getElementById('electroWinter').textContent = formatMoney(electroMonth);
+            document.getElementById('electroYear').textContent = formatMoney(electroMonth * 12);
+
+            document.getElementById('heatingWinter').textContent = formatMoney(heatingMonth);
+            document.getElementById('heatingYear').textContent = formatMoney(heatingMonth * 7);
+
+            document.getElementById('varTotalSummer').textContent = formatMoney(varSummerMonth);
+            document.getElementById('varTotalWinter').textContent = formatMoney(varWinterMonth);
+            document.getElementById('varTotalYear').textContent = formatMoney(varYear);
+
+            document.getElementById('grandTotalSummer').textContent = formatMoney(grandTotalSummer);
+            document.getElementById('grandTotalWinter').textContent = formatMoney(grandTotalWinter);
+            document.getElementById('grandTotalYear').textContent = formatMoney(grandTotalYear);
+
+            document.getElementById('results').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
+```
+
